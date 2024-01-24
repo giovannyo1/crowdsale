@@ -18,6 +18,9 @@ contract Crowdsale {
     uint256 public tokensSold;
 
 
+    // add whitelist
+    mapping(address => bool) public whitelist;
+
     //buy event se emite a tokens. Registra la cantidad de tokens comprados y la dirección del comprador.
     // finalize Se emite al finalizar la venta, registrando la cantidad total de tokens vendidos y la cantidad de ether recaudada.
     event Buy(uint256 amount, address buyer);
@@ -42,18 +45,26 @@ contract Crowdsale {
         _;
     }
 
+    modifier onlyWhitelisted() {
+        require(whitelist[msg.sender], "Sender is not whitelisted");
+        _;
+    }
+
     // Buy tokens directly by sending Ether
     // --> https://docs.soliditylang.org/en/v0.8.15/contracts.html#receive-ether-function
     //Receive : Esta función es llamada cuando el contrato recibe ether directamente. Calcula la cantidad de tokens que el comprador obtendrá y llama a la función buyTokens
     
-    receive() external payable {
+    function addToWhitelist(address _user) public onlyOwner {
+        whitelist[_user] = true;
+    }
+    receive() external payable onlyWhitelisted{
         uint256 amount = msg.value / price;
         buyTokens(amount * 1e18);
     }
 
     //buyTokens Permite a los compradores adquirir tokens enviando ether. Verifica el monto de ether enviado, la disponibilidad de tokens y realiza la transferencia de tokens al comprador.
     
-    function buyTokens(uint256 _amount) public payable {
+    function buyTokens(uint256 _amount) public payable onlyWhitelisted{
         require(msg.value == (_amount / 1e18) * price);
         require(token.balanceOf(address(this)) >= _amount);
         require(token.transfer(msg.sender, _amount));
